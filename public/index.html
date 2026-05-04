@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GPT Image 2</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 16.5 9.3 6.2c.5-1 1.9-1 2.4 0l2.2 4.2 1.1-1.9c.5-.9 1.8-.9 2.3 0l2.7 5c.5.9-.2 2-1.2 2H5.2c-1 0-1.7-1-1.2-2Z" /><path d="M5 19h14" /></svg>
+          </span>
+          <div>
+            <h1>GPT Image 2</h1>
+            <p>OpenAI image studio</p>
+          </div>
+        </div>
+
+        <div class="connection">
+          <label class="field">
+            <span>API Key</span>
+            <input id="apiKey" type="password" autocomplete="off" placeholder="sk-..." />
+          </label>
+          <label class="field">
+            <span>Base URL</span>
+            <input id="baseUrl" value="https://api.openai.com/v1" spellcheck="false" />
+          </label>
+          <label class="remember" title="只保存在当前浏览器">
+            <input id="rememberConnection" type="checkbox" />
+            <span>保存</span>
+          </label>
+          <button id="clearConnection" class="icon-button" type="button" title="清空连接">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 15h10l1-15" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="studio-grid">
+        <section class="creation-card">
+          <div class="section-head">
+            <div>
+              <span class="eyebrow" id="workflowMode">Text to image</span>
+              <h2>Describe the image</h2>
+            </div>
+            <span id="promptCount">0 / 32000</span>
+          </div>
+
+          <textarea id="prompt" maxlength="32000" placeholder="描述你要生成的图片。写清楚主体、构图、光线、画面文字、语言、位置关系和风格。"></textarea>
+
+          <div class="chip-row" id="styleChips">
+            <button type="button" data-text="画面中的文字必须准确清晰，不要额外字符">文字准确</button>
+            <button type="button" data-text="真实摄影质感，自然光线，细节锐利">真实摄影</button>
+            <button type="button" data-text="商业海报构图，主体明确，留白干净">商业海报</button>
+            <button type="button" data-text="UI mockup，布局规整，组件边界清晰">UI Mockup</button>
+          </div>
+
+          <div class="controls">
+            <label class="field model-field">
+              <span>模型</span>
+              <select id="model">
+                <option value="gpt-image-2">gpt-image-2</option>
+                <option value="gpt-image-2-2026-04-21">gpt-image-2-2026-04-21</option>
+                <option value="gpt-image-1.5">gpt-image-1.5</option>
+                <option value="custom">自定义</option>
+              </select>
+            </label>
+            <label id="customModelWrap" class="field is-hidden">
+              <span>自定义模型</span>
+              <input id="customModel" placeholder="image2 / openai/gpt-image-2" spellcheck="false" />
+            </label>
+            <div class="ratio-group" id="sizeGroup" aria-label="比例">
+              <button data-value="1024x1024" data-ratio="1:1" class="is-active" type="button">1:1</button>
+              <button data-value="1536x1024" data-ratio="3:2" type="button">3:2</button>
+              <button data-value="1024x1536" data-ratio="2:3" type="button">2:3</button>
+              <button data-value="auto" data-ratio="auto" type="button">Auto</button>
+            </div>
+            <label class="field">
+              <span>质量</span>
+              <select id="quality">
+                <option value="auto">auto</option>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>格式</span>
+              <select id="outputFormat">
+                <option value="webp">webp</option>
+                <option value="png">png</option>
+                <option value="jpeg">jpeg</option>
+              </select>
+            </label>
+            <label class="field count-field">
+              <span>数量</span>
+              <input id="count" min="1" max="10" type="number" value="1" />
+            </label>
+          </div>
+
+          <div class="action-row">
+            <label class="upload">
+              <input id="referenceInput" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+              <svg viewBox="0 0 24 24"><path d="M12 5v14" /><path d="m5 12 7-7 7 7" /></svg>
+              参考图
+            </label>
+            <button class="primary-button" id="generateBtn" type="button">
+              <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" /></svg>
+              生成图片
+            </button>
+          </div>
+
+          <section class="reference-grid" id="referenceGrid"></section>
+        </section>
+
+        <section class="preview-card">
+          <div class="preview-top">
+            <div class="status-line">
+              <span id="statusDot"></span>
+              <span id="statusText">等待生成</span>
+            </div>
+            <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+          </div>
+          <div class="image-grid" id="imageGrid">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z" /><path d="m4 15 4-4 4 4 2-2 6 6" /><circle cx="16" cy="9" r="1.5" /></svg>
+              <p>生成结果会显示在这里</p>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
