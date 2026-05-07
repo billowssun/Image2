@@ -10,7 +10,7 @@
     <main class="app">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark"></span>
+          <span class="brand-mark" aria-hidden="true"></span>
           <strong>Media Client</strong>
         </div>
 
@@ -31,41 +31,217 @@
             <svg viewBox="0 0 24 24"><path d="M4 10v4h4l5 5V5L8 10H4z" /><path d="M17 9a4 4 0 0 1 0 6" /><path d="M19.5 6.5a8 8 0 0 1 0 11" /></svg>
             文字转语音
           </button>
-          <button data-view="moderation" type="button">
-            <svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6l-7-3Z" /></svg>
-            内容审核
-          </button>
           <button data-view="history" type="button">
             <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /><path d="M12 7v5l3 2" /></svg>
             历史记录
           </button>
         </nav>
 
-        <details class="settings">
-          <summary title="设置">
+        <details class="settings" id="settings">
+          <summary title="API Key 设置">
             <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.3 7A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z" /></svg>
+            <span>设置 Key</span>
           </summary>
           <div class="settings-panel">
-            <label class="field">
-              <span>OpenAI API Key</span>
-              <input id="openaiKey" type="password" placeholder="sk-..." autocomplete="off" />
-            </label>
-            <label class="field">
-              <span>Gemini API Key</span>
-              <input id="geminiKey" type="password" placeholder="AIza..." autocomplete="off" />
-            </label>
-            <label class="field">
-              <span>阿里云百炼 API Key</span>
-              <input id="alibabaKey" type="password" placeholder="sk-..." autocomplete="off" />
-            </label>
-            <label class="field">
-              <span>MiniMax API Key</span>
-              <input id="minimaxKey" type="password" placeholder="sk-..." autocomplete="off" />
-            </label>
-            <label class="field">
-              <span>Base URL</span>
-              <input id="baseUrl" value="https://api.openai.com/v1" spellcheck="false" />
-            </label>
+            <div class="settings-head">
+              <div>
+                <strong>连接中心</strong>
+                <span>按厂商管理密钥、接口地址和官方入口</span>
+              </div>
+              <span class="settings-count">7 个厂商</span>
+            </div>
+
+            <details class="provider-config" data-provider-config="openai" open>
+              <summary>
+                <span class="provider-avatar">O</span>
+                <span class="provider-copy">
+                  <strong>OpenAI</strong>
+                  <small>图片 / 视频 / 转写 / 语音</small>
+                </span>
+                <span class="provider-state" data-config-status="openai">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">获取 Key</a>
+                  <a href="https://platform.openai.com/docs" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>API Key</span>
+                  <input id="openaiKey" type="password" placeholder="sk-..." autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="baseUrl" value="https://api.openai.com/v1" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
+            <details class="provider-config" data-provider-config="gemini">
+              <summary>
+                <span class="provider-avatar">G</span>
+                <span class="provider-copy">
+                  <strong>Gemini</strong>
+                  <small>图片 / 转写 / 语音</small>
+                </span>
+                <span class="provider-state" data-config-status="gemini">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer">获取 Key</a>
+                  <a href="https://ai.google.dev/gemini-api/docs" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>API Key</span>
+                  <input id="geminiKey" type="password" placeholder="AIza..." autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="geminiBaseUrl" value="https://generativelanguage.googleapis.com/v1beta" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
+            <details class="provider-config" data-provider-config="alibaba">
+              <summary>
+                <span class="provider-avatar">阿</span>
+                <span class="provider-copy">
+                  <strong>阿里云百炼</strong>
+                  <small>Qwen-Image / Paraformer / CosyVoice</small>
+                </span>
+                <span class="provider-state" data-config-status="alibaba">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noreferrer">控制台</a>
+                  <a href="https://help.aliyun.com/zh/model-studio/" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>API Key</span>
+                  <input id="alibabaKey" type="password" placeholder="sk-..." autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="alibabaBaseUrl" value="https://dashscope.aliyuncs.com" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
+            <details class="provider-config" data-provider-config="minimax">
+              <summary>
+                <span class="provider-avatar">M</span>
+                <span class="provider-copy">
+                  <strong>MiniMax</strong>
+                  <small>图片 / 视频 / 语音</small>
+                </span>
+                <span class="provider-state" data-config-status="minimax">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://platform.minimax.io/" target="_blank" rel="noreferrer">控制台</a>
+                  <a href="https://platform.minimax.io/docs" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>API Key</span>
+                  <input id="minimaxKey" type="password" placeholder="sk-..." autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="minimaxBaseUrl" value="https://api.minimax.io/v1" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
+            <details class="provider-config" data-provider-config="volcengine">
+              <summary>
+                <span class="provider-avatar">火</span>
+                <span class="provider-copy">
+                  <strong>火山引擎</strong>
+                  <small>Seedream / Seedance / ASR / TTS</small>
+                </span>
+                <span class="provider-state" data-config-status="volcengine">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://console.volcengine.com/ark" target="_blank" rel="noreferrer">方舟控制台</a>
+                  <a href="https://www.volcengine.com/docs" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>API Key / Access Token</span>
+                  <input id="volcengineKey" type="password" placeholder="Bearer Key 或 Access Token" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="volcengineBaseUrl" value="https://ark.cn-beijing.volces.com/api/v3" spellcheck="false" />
+                </label>
+                <label class="field">
+                  <span>语音 App ID</span>
+                  <input id="volcengineAppId" placeholder="仅 ASR/TTS 需要" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>语音 Cluster</span>
+                  <input id="volcengineCluster" value="volcano_tts" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
+            <details class="provider-config" data-provider-config="kling">
+              <summary>
+                <span class="provider-avatar">K</span>
+                <span class="provider-copy">
+                  <strong>可灵 Kling</strong>
+                  <small>视频生成</small>
+                </span>
+                <span class="provider-state" data-config-status="kling">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://app.klingai.com/" target="_blank" rel="noreferrer">控制台</a>
+                  <a href="https://klingapi.com/docs" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>API Key</span>
+                  <input id="klingKey" type="password" placeholder="Kling API Key" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>Base URL</span>
+                  <input id="klingBaseUrl" value="https://api.klingapi.com" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
+            <details class="provider-config" data-provider-config="xfyun">
+              <summary>
+                <span class="provider-avatar">讯</span>
+                <span class="provider-copy">
+                  <strong>讯飞开放平台</strong>
+                  <small>ASR / TTS</small>
+                </span>
+                <span class="provider-state" data-config-status="xfyun">未配置</span>
+              </summary>
+              <div class="provider-config-body">
+                <div class="provider-links">
+                  <a href="https://console.xfyun.cn/" target="_blank" rel="noreferrer">控制台</a>
+                  <a href="https://www.xfyun.cn/doc/" target="_blank" rel="noreferrer">查看文档</a>
+                </div>
+                <label class="field">
+                  <span>App ID</span>
+                  <input id="xfyunAppId" placeholder="讯飞 AppID" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>API Key</span>
+                  <input id="xfyunKey" type="password" placeholder="讯飞 APIKey" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>API Secret</span>
+                  <input id="xfyunSecret" type="password" placeholder="讯飞 APISecret" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>ASR Base URL</span>
+                  <input id="xfyunBaseUrl" value="wss://iat-api.xfyun.cn/v2/iat" spellcheck="false" />
+                </label>
+              </div>
+            </details>
+
             <label class="remember">
               <input id="rememberConnection" type="checkbox" />
               <span>保存在当前浏览器</span>
@@ -77,84 +253,105 @@
 
       <section class="key-card" id="keyNotice">
         <div>
-          <strong>填写 API Key 后即可体验全部功能</strong>
-            <p>在设置中填写 OpenAI、Gemini、阿里云百炼或 MiniMax Key。密钥只会发送到本地代理服务，不会写入项目文件。</p>
+          <strong id="keyNoticeTitle">当前供应商未配置 API Key</strong>
+          <p id="keyNoticeText">请先在右上角设置中填写当前功能所需的 Key。</p>
         </div>
-        <button id="openSettings" type="button">填写 API Key</button>
+        <button id="openSettings" type="button">设置 Key</button>
       </section>
 
       <section class="view is-active" data-panel="image">
         <div class="page-head">
           <div>
+            <span class="eyebrow">Image</span>
             <h1>图片生成</h1>
-            <p>使用 GPT Image 2 生成或编辑高质量图片。</p>
+            <p>选择供应商和模型，生成或编辑图片。</p>
           </div>
+          <span class="provider-status" data-provider-status="image">未配置 Key</span>
         </div>
+
         <div class="work-grid">
           <section class="panel form-panel">
-            <div class="provider-tabs">
-              <button class="is-active" data-image-provider="openai" type="button">GPT-Image</button>
-              <button data-image-provider="gemini" type="button">Nano Banana</button>
-              <button data-image-provider="alibaba" type="button">Qwen-Image</button>
-            </div>
-            <label class="field">
-              <span>供应商</span>
-              <select id="imageProvider">
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-                <option value="alibaba">阿里云百炼</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>模型</span>
-              <select id="imageModel">
-                <option value="gpt-image-2">gpt-image-2</option>
-                <option value="gpt-image-2-2026-04-21">gpt-image-2-2026-04-21</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>提示词</span>
-              <textarea id="imagePrompt" placeholder="描述你想生成的图片..."></textarea>
-            </label>
-            <div class="inline-fields">
+            <fieldset class="form-section">
+              <legend>供应商与模型</legend>
+              <div class="provider-catalog" aria-label="图片供应商覆盖">
+                <span class="is-ready">OpenAI GPT-Image</span>
+                <span class="is-ready">Gemini Nano Banana</span>
+                <span class="is-ready">阿里云 Qwen-Image</span>
+                <span>火山方舟 Seedream</span>
+              </div>
+              <div class="two-fields">
+                <label class="field">
+                  <span>供应商</span>
+                  <select id="imageProvider">
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="alibaba">阿里云百炼</option>
+                    <option value="volcengine">火山方舟 Seedream</option>
+                    <option value="minimax">MiniMax Image</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>模型</span>
+                  <select id="imageModel"></select>
+                  <button class="refresh-models" data-model-area="image" type="button">刷新模型列表</button>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend>输入内容</legend>
               <label class="field">
-                <span>尺寸</span>
-                <select id="imageSize">
-                  <option value="auto">auto</option>
-                  <option value="1024x1024">1024x1024</option>
-                  <option value="1536x1024">1536x1024</option>
-                  <option value="1024x1536">1024x1536</option>
-                </select>
+                <span>提示词</span>
+                <textarea id="imagePrompt" placeholder="描述你想生成的图片..."></textarea>
               </label>
-              <label class="field">
-                <span>质量</span>
-                <select id="imageQuality">
-                  <option value="auto">auto</option>
-                  <option value="low">low</option>
-                  <option value="medium">medium</option>
-                  <option value="high">high</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>数量</span>
-                <input id="imageCount" type="number" min="1" max="10" value="1" />
-              </label>
-            </div>
-            <div class="action-row">
-              <label class="upload-button">
+              <div class="capability-note" id="imageReferenceNote">当前模型支持上传参考图。</div>
+              <label class="upload-button" id="imageReferenceWrap">
                 <input id="imageReference" type="file" accept="image/png,image/jpeg,image/webp" multiple />
                 上传参考图
               </label>
+              <div class="thumb-row" id="imageRefs"></div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <legend>生成参数</legend>
+              <div class="inline-fields">
+                <label class="field">
+                  <span>尺寸</span>
+                  <select id="imageSize">
+                    <option value="auto">auto</option>
+                    <option value="1024x1024">1024x1024</option>
+                    <option value="1536x1024">1536x1024</option>
+                    <option value="1024x1536">1024x1536</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>质量</span>
+                  <select id="imageQuality">
+                    <option value="auto">auto</option>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>数量</span>
+                  <input id="imageCount" type="number" min="1" max="10" value="1" />
+                </label>
+              </div>
+              <p class="field-help" id="imageCountHelp">当前供应商最多一次生成 10 张。</p>
+            </fieldset>
+
+            <div class="action-row">
               <button class="primary-button" id="imageRun" type="button">生成图片</button>
             </div>
-            <div class="thumb-row" id="imageRefs"></div>
           </section>
+
           <section class="panel result-panel">
             <div class="panel-title">
               <strong>结果预览</strong>
-              <span>gpt-image-2</span>
+              <span id="imageResultModel">gpt-image-2</span>
             </div>
-            <div class="result-box image-results" id="imageResults">图片结果会显示在这里</div>
+            <div class="result-box image-results is-empty" id="imageResults">图片结果会显示在这里</div>
           </section>
         </div>
       </section>
@@ -162,47 +359,77 @@
       <section class="view" data-panel="video">
         <div class="page-head">
           <div>
+            <span class="eyebrow">Video</span>
             <h1>视频生成</h1>
-            <p>使用 Sora 2 创建视频任务，返回任务状态用于后续查询。</p>
+            <p>创建视频任务，并查询任务状态。</p>
           </div>
+          <span class="provider-status" data-provider-status="video">未配置 Key</span>
         </div>
         <div class="work-grid">
           <section class="panel form-panel">
-            <label class="field">
-              <span>模型</span>
-              <select id="videoModel">
-                <option value="sora-2">sora-2</option>
-                <option value="sora-2-pro">sora-2-pro</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>提示词</span>
-              <textarea id="videoPrompt" placeholder="描述视频画面、镜头运动和时长感..."></textarea>
-            </label>
-            <div class="inline-fields">
+            <fieldset class="form-section">
+              <legend>供应商与模型</legend>
+              <div class="provider-catalog" aria-label="视频供应商覆盖">
+                <span class="is-ready">OpenAI Sora</span>
+                <span>火山方舟 Seedance</span>
+                <span>可灵 Kling</span>
+                <span>MiniMax 海螺</span>
+              </div>
               <label class="field">
-                <span>尺寸</span>
-                <select id="videoSize">
-                  <option value="1280x720">1280x720</option>
-                  <option value="720x1280">720x1280</option>
-                  <option value="1792x1024">1792x1024</option>
-                  <option value="1024x1792">1024x1792</option>
+                <span>供应商</span>
+                <select id="videoProvider">
+                  <option value="openai">OpenAI</option>
+                  <option value="volcengine">火山方舟 Seedance</option>
+                  <option value="kling">可灵 Kling</option>
+                  <option value="minimax">MiniMax 海螺</option>
                 </select>
               </label>
+                <label class="field">
+                  <span>模型</span>
+                  <select id="videoModel">
+                    <option value="sora-2">sora-2</option>
+                    <option value="sora-2-pro">sora-2-pro</option>
+                  </select>
+                  <button class="refresh-models" data-model-area="video" type="button">刷新模型列表</button>
+                </label>
+            </fieldset>
+            <fieldset class="form-section">
+              <legend>输入内容</legend>
               <label class="field">
-                <span>秒数</span>
-                <select id="videoSeconds">
-                  <option value="4">4</option>
-                  <option value="8">8</option>
-                  <option value="12">12</option>
-                </select>
+                <span>提示词</span>
+                <textarea id="videoPrompt" placeholder="描述视频画面、镜头运动和时长感..."></textarea>
               </label>
+            </fieldset>
+            <fieldset class="form-section">
+              <legend>生成参数</legend>
+              <div class="two-fields">
+                <label class="field">
+                  <span>尺寸</span>
+                  <select id="videoSize">
+                    <option value="1280x720">1280x720</option>
+                    <option value="720x1280">720x1280</option>
+                    <option value="1792x1024">1792x1024</option>
+                    <option value="1024x1792">1024x1792</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>秒数</span>
+                  <select id="videoSeconds">
+                    <option value="4">4</option>
+                    <option value="8">8</option>
+                    <option value="12">12</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+            <div class="action-row split">
+              <button class="ghost-button" id="videoPoll" type="button" disabled>查询任务状态</button>
+              <button class="primary-button" id="videoRun" type="button">创建视频任务</button>
             </div>
-            <button class="primary-button" id="videoRun" type="button">创建视频任务</button>
           </section>
           <section class="panel result-panel">
-            <div class="panel-title"><strong>任务结果</strong><span>/videos</span></div>
-            <pre class="result-box" id="videoResults">视频任务信息会显示在这里</pre>
+            <div class="panel-title"><strong>任务结果</strong><span id="videoResultStatus">/videos</span></div>
+            <pre class="result-box text-result is-empty" id="videoResults">视频任务信息会显示在这里</pre>
           </section>
         </div>
       </section>
@@ -210,37 +437,60 @@
       <section class="view" data-panel="transcribe">
         <div class="page-head">
           <div>
+            <span class="eyebrow">Audio</span>
             <h1>音频转文字</h1>
             <p>上传音频文件，转换为文本。</p>
           </div>
+          <span class="provider-status" data-provider-status="transcribe">未配置 Key</span>
         </div>
         <div class="work-grid">
           <section class="panel form-panel">
-            <label class="field">
-              <span>供应商</span>
-              <select id="transcribeProvider">
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>模型</span>
-              <select id="transcribeModel">
-                <option value="gpt-4o-transcribe">gpt-4o-transcribe</option>
-                <option value="gpt-4o-mini-transcribe">gpt-4o-mini-transcribe</option>
-                <option value="whisper-1">whisper-1</option>
-              </select>
-            </label>
-            <label class="upload-drop">
-              <input id="audioFile" type="file" accept="audio/*" />
-              <strong>选择音频文件</strong>
-              <span id="audioFileName">支持 mp3、wav、m4a 等常见格式</span>
-            </label>
-            <button class="primary-button" id="transcribeRun" type="button">开始转写</button>
+            <fieldset class="form-section">
+              <legend>供应商与模型</legend>
+              <div class="provider-catalog" aria-label="转写供应商覆盖">
+                <span class="is-ready">OpenAI Transcribe</span>
+                <span class="is-ready">Gemini Audio</span>
+                <span>阿里云智能语音</span>
+                <span>火山引擎 ASR</span>
+                <span>讯飞开放平台</span>
+              </div>
+              <div class="two-fields">
+                <label class="field">
+                  <span>供应商</span>
+                  <select id="transcribeProvider">
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="alibaba">阿里云智能语音</option>
+                    <option value="volcengine">火山引擎 ASR</option>
+                    <option value="xfyun">讯飞开放平台</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>模型</span>
+                  <select id="transcribeModel"></select>
+                  <button class="refresh-models" data-model-area="transcribe" type="button">刷新模型列表</button>
+                </label>
+              </div>
+            </fieldset>
+            <fieldset class="form-section">
+              <legend>音频文件</legend>
+              <label class="upload-drop">
+                <input id="audioFile" type="file" accept="audio/*" />
+                <strong>选择音频文件</strong>
+                <span id="audioFileName">支持 mp3、wav、m4a 等常见格式</span>
+              </label>
+              <label class="field">
+                <span>音频 URL</span>
+                <input id="audioUrl" placeholder="阿里云录音文件识别需要公网可访问 URL，可选" spellcheck="false" />
+              </label>
+            </fieldset>
+            <div class="action-row">
+              <button class="primary-button" id="transcribeRun" type="button">开始转写</button>
+            </div>
           </section>
           <section class="panel result-panel">
-            <div class="panel-title"><strong>转写结果</strong><span>/audio/transcriptions</span></div>
-            <div class="result-box text-result" id="transcribeResults">文本会显示在这里</div>
+            <div class="panel-title"><strong>转写结果</strong><span id="transcribeResultModel">/audio/transcriptions</span></div>
+            <div class="result-box text-result is-empty" id="transcribeResults">文本会显示在这里</div>
           </section>
         </div>
       </section>
@@ -248,71 +498,61 @@
       <section class="view" data-panel="speech">
         <div class="page-head">
           <div>
+            <span class="eyebrow">Speech</span>
             <h1>文字转语音</h1>
             <p>输入文本，生成可播放的语音。</p>
           </div>
+          <span class="provider-status" data-provider-status="speech">未配置 Key</span>
         </div>
         <div class="work-grid">
           <section class="panel form-panel">
-            <label class="field">
-              <span>供应商</span>
-              <select id="speechProvider">
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-                <option value="minimax">MiniMax</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>文本</span>
-              <textarea id="speechText" maxlength="4096" placeholder="输入要朗读的文字..."></textarea>
-            </label>
-            <div class="inline-fields">
-              <label class="field">
-                <span>模型</span>
-                <select id="speechModel">
-                  <option value="gpt-4o-mini-tts">gpt-4o-mini-tts</option>
-                  <option value="tts-1">tts-1</option>
-                  <option value="tts-1-hd">tts-1-hd</option>
-                </select>
-              </label>
+            <fieldset class="form-section">
+              <legend>供应商与模型</legend>
+              <div class="provider-catalog" aria-label="语音供应商覆盖">
+                <span class="is-ready">OpenAI TTS</span>
+                <span class="is-ready">Gemini TTS</span>
+                <span class="is-ready">MiniMax Speech</span>
+                <span>阿里云 CosyVoice</span>
+                <span>火山引擎 TTS</span>
+                <span>讯飞语音合成</span>
+              </div>
+              <div class="two-fields">
+                <label class="field">
+                  <span>供应商</span>
+                  <select id="speechProvider">
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="minimax">MiniMax</option>
+                    <option value="alibaba">阿里云 CosyVoice</option>
+                    <option value="volcengine">火山引擎 TTS</option>
+                    <option value="xfyun">讯飞语音合成</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>模型</span>
+                  <select id="speechModel"></select>
+                  <button class="refresh-models" data-model-area="speech" type="button">刷新模型列表</button>
+                </label>
+              </div>
               <label class="field">
                 <span>声音</span>
-                <select id="speechVoice">
-                  <option value="alloy">alloy</option>
-                  <option value="coral">coral</option>
-                  <option value="nova">nova</option>
-                  <option value="shimmer">shimmer</option>
-                  <option value="verse">verse</option>
-                </select>
+                <select id="speechVoice"></select>
               </label>
+            </fieldset>
+            <fieldset class="form-section">
+              <legend>输入内容</legend>
+              <label class="field">
+                <span>文本</span>
+                <textarea id="speechText" maxlength="4096" placeholder="输入要朗读的文字..."></textarea>
+              </label>
+            </fieldset>
+            <div class="action-row">
+              <button class="primary-button" id="speechRun" type="button">生成语音</button>
             </div>
-            <button class="primary-button" id="speechRun" type="button">生成语音</button>
           </section>
           <section class="panel result-panel">
-            <div class="panel-title"><strong>音频预览</strong><span>/audio/speech</span></div>
-            <div class="result-box" id="speechResults">音频播放器会显示在这里</div>
-          </section>
-        </div>
-      </section>
-
-      <section class="view" data-panel="moderation">
-        <div class="page-head">
-          <div>
-            <h1>内容审核</h1>
-            <p>检测文本是否包含潜在风险内容。</p>
-          </div>
-        </div>
-        <div class="work-grid">
-          <section class="panel form-panel">
-            <label class="field">
-              <span>待审核文本</span>
-              <textarea id="moderationInput" placeholder="粘贴要审核的内容..."></textarea>
-            </label>
-            <button class="primary-button" id="moderationRun" type="button">开始审核</button>
-          </section>
-          <section class="panel result-panel">
-            <div class="panel-title"><strong>审核结果</strong><span>omni-moderation-latest</span></div>
-            <pre class="result-box" id="moderationResults">审核结果会显示在这里</pre>
+            <div class="panel-title"><strong>音频预览</strong><span id="speechResultModel">/audio/speech</span></div>
+            <div class="result-box is-empty" id="speechResults">音频播放器会显示在这里</div>
           </section>
         </div>
       </section>
@@ -320,6 +560,7 @@
       <section class="view" data-panel="history">
         <div class="page-head">
           <div>
+            <span class="eyebrow">Local</span>
             <h1>历史记录</h1>
             <p>本地浏览器保存最近的请求摘要。</p>
           </div>
