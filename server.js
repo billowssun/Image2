@@ -20,9 +20,22 @@ const defaultBaseUrls = {
 const PROVIDERS = { OPENAI: "openai", GEMINI: "gemini", ALIBABA: "alibaba", MINIMAX: "minimax", VOLCENGINE: "volcengine", KLING: "kling", XFYUN: "xfyun" };
 const PROVIDER_NAMES = { [PROVIDERS.OPENAI]: "OpenAI", [PROVIDERS.GEMINI]: "Gemini", [PROVIDERS.ALIBABA]: "阿里云百炼", [PROVIDERS.MINIMAX]: "MiniMax", [PROVIDERS.VOLCENGINE]: "火山引擎", [PROVIDERS.KLING]: "可灵", [PROVIDERS.XFYUN]: "讯飞开放平台" };
 
+const LOG_LEVELS = { debug: 10, info: 20, warn: 30, error: 40 };
+const LOG_THRESHOLD = Number(process.env.LOG_LEVEL) || LOG_LEVELS.debug;
+
 function log(level, ...args) {
+  if ((LOG_LEVELS[level] || 0) < LOG_THRESHOLD) return;
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [${level}]`, ...args);
+  const write = level === "error" ? console.error : level === "warn" ? console.warn : console.log;
+  write(`[${timestamp}] [${level}]`, ...args);
+}
+
+const FETCH_TIMEOUT = 120000;
+
+async function safeFetch(url, options = {}) {
+  const opts = { ...options };
+  if (!opts.signal) opts.signal = AbortSignal.timeout(FETCH_TIMEOUT);
+  return fetch(url, opts);
 }
 
 const rateWindowMs = 60000;
@@ -45,6 +58,7 @@ setInterval(() => {
   for (const [ip, record] of rateStore) {
     if (record.windowStart < cutoff) rateStore.delete(ip);
   }
+  if (rateStore.size > 20000) rateStore.clear();
 }, 30000);
 
 const mimeTypes = {
@@ -62,16 +76,26 @@ const mimeTypes = {
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store"
+    "cache-control": "no-store",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "POST, GET, OPTIONS",
+    "access-control-allow-headers": "content-type",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "strict-origin-when-cross-origin"
   });
   res.end(JSON.stringify(payload));
 }
 
 async function readJson(req) {
+  const contentType = String(req.headers["content-type"] || "");
+  if (!contentType.includes("application/json")) {
+    throw Object.assign(new Error("请使用 JSON 格式请求。"), { status: 415 });
+  }
   const contentLength = Number(req.headers["content-length"] || 0);
-  const maxBodySize = 64 * 1024 * 1024;
+  const maxBodySize = 10 * 1024 * 1024;
   if (contentLength > maxBodySize) {
-    throw new Error("Request body is too large.");
+    throw Object.assign(new Error("Request body is too large."), { status: 413 });
   }
   const chunks = [];
   let totalLength = 0;
@@ -79,7 +103,7 @@ async function readJson(req) {
     chunks.push(chunk);
     totalLength += chunk.length;
     if (totalLength > maxBodySize) {
-      throw new Error("Request body is too large.");
+      throw Object.assign(new Error("Request body is too large."), { status: 413 });
     }
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
@@ -275,7 +299,7 @@ function buildOpenAIImagePayload(input) {
 
 async function proxyJsonPost(authResult, endpoint, payload) {
   const { apiKey, baseUrl } = authResult;
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+  const response = await safeFetch(`${baseUrl}${endpoint}`, {
     method: "POST",
     headers: {
       "authorization": `Bearer ${apiKey}`,
@@ -311,7 +335,7 @@ async function openAIImage(input, res) {
         const image = parseDataUrl(item.dataUrl);
         form.append(references.length > 1 ? "image[]" : "image", new Blob([image.buffer], { type: image.mime }), item.name || `reference-${index + 1}.png`);
       });
-      const response = await fetch(endpoint, {
+      const response = await safeFetch(endpoint, {
         method: "POST",
         headers: { "authorization": `Bearer ${authResult.apiKey}` },
         body: form
@@ -330,7 +354,7 @@ async function openAIImage(input, res) {
 
 async function geminiGenerateContent(input, model, parts, generationConfig) {
   const { apiKey, baseUrl } = auth(input, PROVIDERS.GEMINI);
-  const response = await fetch(`${baseUrl}/models/${model}:generateContent`, {
+  const response = await safeFetch(`${baseUrl}/models/${model}:generateContent`, {
     method: "POST",
     headers: {
       "x-goog-api-key": apiKey,
@@ -411,7 +435,7 @@ async function alibabaImage(input, res) {
     }
   };
 
-  const response = await fetch(`${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`, {
+  const response = await safeFetch(`${baseUrl}/api/v1/services/aigc/multimodal-generation/generation`, {
     method: "POST",
     headers: {
       "authorization": `Bearer ${apiKey}`,
@@ -420,7 +444,7 @@ async function alibabaImage(input, res) {
     body: JSON.stringify(payload)
   });
   const data = await readJsonResponse(response);
-  if (!response.ok || data.code) return sendJson(res, response.status || 500, { error: data.message || apiError(data, response), detail: data });
+  if (!response.ok || data.code) return sendJson(res, response.ok && data.code ? 502 : response.status || 500, { error: data.message || apiError(data, response), detail: data });
 
   const images = [];
   for (const choice of data.output?.choices || []) {
@@ -464,7 +488,7 @@ async function minimaxImage(input, res) {
     response_format: "base64",
     n: Math.max(1, Math.min(9, Number(input.n || 1)))
   };
-  const response = await fetch(`${baseUrl}/image_generation`, {
+  const response = await safeFetch(`${baseUrl}/image_generation`, {
     method: "POST",
     headers: { "authorization": `Bearer ${apiKey}`, "content-type": "application/json" },
     body: JSON.stringify(payload)
@@ -488,7 +512,7 @@ async function proxyGenerate(req, res) {
     return await openAIImage(input, res);
   } catch (error) {
     log("error", "generate", error.message);
-    return sendJson(res, 500, { error: error.message || "图片请求失败。" });
+    return sendJson(res, error.status || 500, { error: error.message || "图片请求失败。" });
   }
 }
 
@@ -502,7 +526,7 @@ async function proxyVideo(req, res) {
 
     if (provider === PROVIDERS.MINIMAX) {
       const payload = { model: input.model || "MiniMax-Hailuo-2.3", prompt, duration: Number(input.seconds || 5) };
-      const response = await fetch(`${baseUrl}/video_generation`, {
+      const response = await safeFetch(`${baseUrl}/video_generation`, {
         method: "POST",
         headers: { "authorization": `Bearer ${apiKey}`, "content-type": "application/json" },
         body: JSON.stringify(payload)
@@ -520,7 +544,7 @@ async function proxyVideo(req, res) {
         aspect_ratio: String(input.size || "1280x720").startsWith("720x") ? "9:16" : "16:9",
         mode: String(input.model || "").includes("pro") ? "professional" : "standard"
       };
-      const response = await fetch(`${baseUrl}/v1/videos/text2video`, {
+      const response = await safeFetch(`${baseUrl}/v1/videos/text2video`, {
         method: "POST",
         headers: { "authorization": `Bearer ${apiKey}`, "content-type": "application/json" },
         body: JSON.stringify(payload)
@@ -547,7 +571,7 @@ async function proxyVideo(req, res) {
     form.append("size", input.size || "1280x720");
     form.append("seconds", String(input.seconds || "4"));
 
-    const response = await fetch(`${baseUrl}/videos`, {
+    const response = await safeFetch(`${baseUrl}/videos`, {
       method: "POST",
       headers: { "authorization": `Bearer ${apiKey}` },
       body: form
@@ -557,7 +581,7 @@ async function proxyVideo(req, res) {
     return sendJson(res, 200, { response: data });
   } catch (error) {
     log("error", "video", error.message);
-    return sendJson(res, 500, { error: error.message || "视频请求失败。" });
+    return sendJson(res, error.status || 500, { error: error.message || "视频请求失败。" });
   }
 }
 
@@ -570,7 +594,7 @@ async function proxyVideoStatus(req, res) {
     if (!id) return sendJson(res, 400, { error: "请先提供视频任务 ID。" });
 
     if (provider === PROVIDERS.MINIMAX) {
-      const response = await fetch(`${baseUrl}/query/video_generation?task_id=${encodeURIComponent(id)}`, {
+      const response = await safeFetch(`${baseUrl}/query/video_generation?task_id=${encodeURIComponent(id)}`, {
         method: "GET",
         headers: { "authorization": `Bearer ${apiKey}` }
       });
@@ -580,7 +604,7 @@ async function proxyVideoStatus(req, res) {
     }
 
     if (provider === PROVIDERS.KLING) {
-      const response = await fetch(`${baseUrl}/v1/videos/${encodeURIComponent(id)}`, {
+      const response = await safeFetch(`${baseUrl}/v1/videos/${encodeURIComponent(id)}`, {
         method: "GET",
         headers: { "authorization": `Bearer ${apiKey}` }
       });
@@ -590,7 +614,7 @@ async function proxyVideoStatus(req, res) {
     }
 
     if (provider === PROVIDERS.VOLCENGINE) {
-      const response = await fetch(`${baseUrl}/video/generations/${encodeURIComponent(id)}`, {
+      const response = await safeFetch(`${baseUrl}/video/generations/${encodeURIComponent(id)}`, {
         method: "GET",
         headers: { "authorization": `Bearer ${apiKey}` }
       });
@@ -599,7 +623,7 @@ async function proxyVideoStatus(req, res) {
       return sendJson(res, 200, { response: data });
     }
 
-    const response = await fetch(`${baseUrl}/videos/${encodeURIComponent(id)}`, {
+    const response = await safeFetch(`${baseUrl}/videos/${encodeURIComponent(id)}`, {
       method: "GET",
       headers: { "authorization": `Bearer ${apiKey}` }
     });
@@ -621,7 +645,7 @@ async function proxyModels(req, res) {
     let ids = [];
 
     if (provider === PROVIDERS.OPENAI) {
-      const response = await fetch(`${baseUrl}/models`, {
+      const response = await safeFetch(`${baseUrl}/models`, {
         method: "GET",
         headers: { "authorization": `Bearer ${apiKey}` }
       });
@@ -629,7 +653,7 @@ async function proxyModels(req, res) {
       if (!response.ok) return sendJson(res, response.status, { error: apiError(data, response), detail: data });
       ids = (data.data || []).map((model) => model.id);
     } else if (provider === PROVIDERS.GEMINI) {
-      const response = await fetch(`${baseUrl}/models`, {
+      const response = await safeFetch(`${baseUrl}/models`, {
         method: "GET",
         headers: { "x-goog-api-key": apiKey }
       });
@@ -637,7 +661,7 @@ async function proxyModels(req, res) {
       if (!response.ok) return sendJson(res, response.status, { error: apiError(data, response), detail: data });
       ids = (data.models || []).map((model) => model.name || model.displayName);
     } else if (provider === PROVIDERS.MINIMAX) {
-      const response = await fetch(`${baseUrl}/models`, {
+      const response = await safeFetch(`${baseUrl}/models`, {
         method: "GET",
         headers: { "authorization": `Bearer ${apiKey}` }
       });
@@ -645,7 +669,7 @@ async function proxyModels(req, res) {
       if (!response.ok) return sendJson(res, response.status, { error: apiError(data, response), detail: data });
       ids = (data.data || []).map((model) => model.id);
     } else if (provider === PROVIDERS.ALIBABA) {
-      const response = await fetch(`${baseUrl}/compatible-mode/v1/models`, {
+      const response = await safeFetch(`${baseUrl}/compatible-mode/v1/models`, {
         method: "GET",
         headers: { "authorization": `Bearer ${apiKey}` }
       });
@@ -700,7 +724,7 @@ async function proxyTranscribe(req, res) {
       const audioUrl = String(input.audioUrl || "").trim();
       if (!audioUrl) return sendJson(res, 400, { error: "阿里云 Paraformer 需要公网可访问的音频 URL。请上传到 OSS 或填写音频 URL 后重试。" });
       const payload = { model: input.model || "paraformer-v2", input: { file_urls: [audioUrl] } };
-      const response = await fetch(`${baseUrl}/api/v1/services/audio/asr/transcription`, {
+      const response = await safeFetch(`${baseUrl}/api/v1/services/audio/asr/transcription`, {
         method: "POST",
         headers: { "authorization": `Bearer ${apiKey}`, "content-type": "application/json", "X-DashScope-Async": "enable" },
         body: JSON.stringify(payload)
@@ -755,7 +779,7 @@ async function proxyTranscribe(req, res) {
         "X-Api-Request-Id": taskId,
         "X-Api-Sequence": "-1"
       };
-      const response = await fetch("https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash", {
+      const response = await safeFetch("https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash", {
         method: "POST",
         headers,
         body: JSON.stringify(payload)
@@ -772,7 +796,7 @@ async function proxyTranscribe(req, res) {
     form.append("model", input.model || "gpt-4o-transcribe");
     form.append("file", new Blob([audio.buffer], { type: audio.mime }), input.file.name || "audio.mp3");
 
-    const response = await fetch(`${baseUrl}/audio/transcriptions`, {
+    const response = await safeFetch(`${baseUrl}/audio/transcriptions`, {
       method: "POST",
       headers: { "authorization": `Bearer ${apiKey}` },
       body: form
@@ -826,7 +850,7 @@ async function proxySpeech(req, res) {
         bitrate: 128000,
         format: "mp3"
       };
-      const response = await fetch(`${baseUrl}/t2a_v2`, {
+      const response = await safeFetch(`${baseUrl}/t2a_v2`, {
         method: "POST",
         headers: {
           "authorization": `Bearer ${apiKey}`,
@@ -849,7 +873,7 @@ async function proxySpeech(req, res) {
         model: input.model || "cosyvoice-v3-flash",
         input: { text, voice: input.voice || "longanyang", format: "mp3", sample_rate: 24000 }
       };
-      const response = await fetch(`${baseUrl}/api/v1/services/audio/tts/SpeechSynthesizer`, {
+      const response = await safeFetch(`${baseUrl}/api/v1/services/audio/tts/SpeechSynthesizer`, {
         method: "POST",
         headers: { "authorization": `Bearer ${apiKey}`, "content-type": "application/json" },
         body: JSON.stringify(payload)
@@ -870,7 +894,7 @@ async function proxySpeech(req, res) {
         request: { reqid: randomUUID(), text, text_type: "plain", operation: "query" }
       };
       const endpoint = baseUrl.includes("ark.cn-") ? "https://openspeech.bytedance.com/api/v1/tts" : `${baseUrl}/api/v1/tts`;
-      const response = await fetch(endpoint, {
+      const response = await safeFetch(endpoint, {
         method: "POST",
         headers: { "authorization": `Bearer;${apiKey}`, "content-type": "application/json" },
         body: JSON.stringify(payload)
@@ -908,7 +932,7 @@ async function proxySpeech(req, res) {
     }
 
     const { apiKey, baseUrl } = auth(input, PROVIDERS.OPENAI);
-    const response = await fetch(`${baseUrl}/audio/speech`, {
+    const response = await safeFetch(`${baseUrl}/audio/speech`, {
       method: "POST",
       headers: {
         "authorization": `Bearer ${apiKey}`,
@@ -955,29 +979,54 @@ async function serveStatic(req, res) {
     const content = await readFile(filePath);
     res.writeHead(200, {
       "content-type": mimeTypes[extname(filePath)] || "application/octet-stream",
-      "cache-control": "no-store"
+      "cache-control": "no-store",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "DENY",
+      "referrer-policy": "strict-origin-when-cross-origin"
     });
     res.end(content);
-  } catch {
-    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-    res.end("Not found");
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+    } else {
+      log("error", `Static file error: ${err.message}`);
+      res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+      res.end("Server error");
+    }
   }
 }
 
+function safeRoute(fn, req, res) {
+  fn(req, res).catch((err) => {
+    if (!res.headersSent) sendJson(res, 500, { error: "服务器内部错误" });
+    log("error", `路由异常: ${err.message}`);
+  });
+}
+
 const server = createServer((req, res) => {
-  const ip = req.socket.remoteAddress || "unknown";
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "POST, GET, OPTIONS",
+      "access-control-allow-headers": "content-type"
+    });
+    return res.end();
+  }
+
+  const ip = req.socket?.remoteAddress || "unknown";
   if (req.method === "POST" && !checkRateLimit(ip)) {
     log("warn", "rate-limit", ip);
     return sendJson(res, 429, { error: "请求过于频繁，请稍后再试。" });
   }
 
-  if (req.method === "POST" && req.url === "/api/generate") return proxyGenerate(req, res);
-  if (req.method === "POST" && req.url === "/api/models") return proxyModels(req, res);
-  if (req.method === "POST" && req.url === "/api/video") return proxyVideo(req, res);
-  if (req.method === "POST" && req.url === "/api/video/status") return proxyVideoStatus(req, res);
-  if (req.method === "POST" && req.url === "/api/transcribe") return proxyTranscribe(req, res);
-  if (req.method === "POST" && req.url === "/api/speech") return proxySpeech(req, res);
-  if (req.method === "POST" && req.url === "/api/moderation") return proxyModeration(req, res);
+  if (req.method === "POST" && req.url === "/api/generate") { safeRoute(proxyGenerate, req, res); return; }
+  if (req.method === "POST" && req.url === "/api/models") { safeRoute(proxyModels, req, res); return; }
+  if (req.method === "POST" && req.url === "/api/video") { safeRoute(proxyVideo, req, res); return; }
+  if (req.method === "POST" && req.url === "/api/video/status") { safeRoute(proxyVideoStatus, req, res); return; }
+  if (req.method === "POST" && req.url === "/api/transcribe") { safeRoute(proxyTranscribe, req, res); return; }
+  if (req.method === "POST" && req.url === "/api/speech") { safeRoute(proxySpeech, req, res); return; }
+  if (req.method === "POST" && req.url === "/api/moderation") { safeRoute(proxyModeration, req, res); return; }
 
   if (req.method === "GET" || req.method === "HEAD") {
     serveStatic(req, res);
@@ -989,7 +1038,7 @@ const server = createServer((req, res) => {
 });
 
 server.listen(port, () => {
-  log("info", `Media Client running at http://localhost:${port}`);
+  log("info", `BYOK running at http://localhost:${port}`);
 });
 
 process.on("SIGTERM", () => {

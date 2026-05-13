@@ -181,7 +181,8 @@ const els = {
   audioFileName: $("#audioFileName"),
   transcribeResultModel: $("#transcribeResultModel"),
   speechResultModel: $("#speechResultModel"),
-  historyList: $("#historyList")
+  historyList: $("#historyList"),
+  providerCount: $("#providerCount")
 };
 
 function escapeHtml(str) {
@@ -249,10 +250,60 @@ function connection(provider = "openai") {
   };
 }
 
+const ENC_STORE_KEY = "media-client.connection.v2";
+
+async function deriveKey() {
+  const material = [navigator.userAgent, navigator.platform, navigator.language, "byok-salt"].join("|");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(material));
+  return crypto.subtle.importKey("raw", new Uint8Array(digest), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+
+async function encryptPayload(plain) {
+  const key = await deriveKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(plain);
+  const cipher = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+  const combined = new Uint8Array(iv.length + cipher.byteLength);
+  combined.set(iv);
+  combined.set(new Uint8Array(cipher), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptPayload(encrypted) {
+  try {
+    const key = await deriveKey();
+    const raw = Uint8Array.from(atob(encrypted), (c) => c.charCodeAt(0));
+    const iv = raw.slice(0, 12);
+    const cipher = raw.slice(12);
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipher);
+    return new TextDecoder().decode(plain);
+  } catch {
+    return null;
+  }
+}
+
 function loadConnection() {
   if (!storageAvailable()) return;
-  const saved = JSON.parse(localStorage.getItem("media-client.connection") || "{}");
-  if (!saved.remember) return;
+  const tryLoad = async () => {
+    const encrypted = localStorage.getItem(ENC_STORE_KEY);
+    if (encrypted) {
+      const plain = await decryptPayload(encrypted);
+      if (plain) {
+        const saved = JSON.parse(plain);
+        if (saved.remember) applyConnection(saved);
+        return;
+      }
+    }
+    const raw = localStorage.getItem("media-client.connection");
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.remember) applyConnection(saved);
+    }
+  };
+  tryLoad().catch(() => {});
+}
+
+function applyConnection(saved) {
   els.openaiKey.value = saved.openaiKey || "";
   els.geminiKey.value = saved.geminiKey || "";
   els.alibabaKey.value = saved.alibabaKey || "";
@@ -274,33 +325,42 @@ function loadConnection() {
   els.rememberConnection.checked = true;
 }
 
+let saveTimer = 0;
 function saveConnection() {
   if (!storageAvailable()) return;
-  if (!els.rememberConnection.checked) {
-    localStorage.removeItem("media-client.connection");
-    return;
-  }
-  localStorage.setItem("media-client.connection", JSON.stringify({
-    remember: true,
-    openaiKey: els.openaiKey.value,
-    geminiKey: els.geminiKey.value,
-    alibabaKey: els.alibabaKey.value,
-    minimaxKey: els.minimaxKey.value,
-    volcengineKey: els.volcengineKey.value,
-    klingKey: els.klingKey.value,
-    xfyunKey: els.xfyunKey.value,
-    xfyunSecret: els.xfyunSecret.value,
-    xfyunAppId: els.xfyunAppId.value,
-    volcengineAppId: els.volcengineAppId.value,
-    volcengineCluster: els.volcengineCluster.value,
-    baseUrl: els.baseUrl.value,
-    geminiBaseUrl: els.geminiBaseUrl.value,
-    alibabaBaseUrl: els.alibabaBaseUrl.value,
-    minimaxBaseUrl: els.minimaxBaseUrl.value,
-    volcengineBaseUrl: els.volcengineBaseUrl.value,
-    klingBaseUrl: els.klingBaseUrl.value,
-    xfyunBaseUrl: els.xfyunBaseUrl.value
-  }));
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (!els.rememberConnection.checked) {
+      localStorage.removeItem("media-client.connection");
+      localStorage.removeItem(ENC_STORE_KEY);
+      return;
+    }
+    const data = {
+      remember: true,
+      openaiKey: els.openaiKey.value,
+      geminiKey: els.geminiKey.value,
+      alibabaKey: els.alibabaKey.value,
+      minimaxKey: els.minimaxKey.value,
+      volcengineKey: els.volcengineKey.value,
+      klingKey: els.klingKey.value,
+      xfyunKey: els.xfyunKey.value,
+      xfyunSecret: els.xfyunSecret.value,
+      xfyunAppId: els.xfyunAppId.value,
+      volcengineAppId: els.volcengineAppId.value,
+      volcengineCluster: els.volcengineCluster.value,
+      baseUrl: els.baseUrl.value,
+      geminiBaseUrl: els.geminiBaseUrl.value,
+      alibabaBaseUrl: els.alibabaBaseUrl.value,
+      minimaxBaseUrl: els.minimaxBaseUrl.value,
+      volcengineBaseUrl: els.volcengineBaseUrl.value,
+      klingBaseUrl: els.klingBaseUrl.value,
+      xfyunBaseUrl: els.xfyunBaseUrl.value
+    };
+    encryptPayload(JSON.stringify(data)).then((encrypted) => {
+      localStorage.setItem(ENC_STORE_KEY, encrypted);
+      localStorage.removeItem("media-client.connection");
+    }).catch(() => {});
+  }, 300);
 }
 
 function currentProvider() {
@@ -421,6 +481,8 @@ async function refreshModels(area, provider, { silent = false } = {}) {
   }
 }
 
+let modelRefreshId = 0;
+
 async function updateProviderModels(area, { autoRefresh = true } = {}) {
   const provider = $(`#${area}Provider`).value;
   const select = $(`#${area}Model`);
@@ -428,7 +490,9 @@ async function updateProviderModels(area, { autoRefresh = true } = {}) {
   if (models.length && select) setOptions(select, models);
 
   if (autoRefresh && providerKey(provider)) {
+    const refreshId = ++modelRefreshId;
     const fresh = await refreshModels(area, provider, { silent: true });
+    if (refreshId !== modelRefreshId) return;
     if (fresh?.length && select) setOptions(select, fresh);
   }
 
@@ -474,9 +538,16 @@ function fileToDataUrl(file) {
   });
 }
 
+let historyCache = null;
+let historyCacheVersion = 0;
+
 function historyItems() {
   if (!storageAvailable()) return [];
-  return JSON.parse(localStorage.getItem("media-client.history") || "[]");
+  const raw = localStorage.getItem("media-client.history") || "[]";
+  if (historyCache && historyCache.raw === raw) return historyCache.data;
+  const data = JSON.parse(raw);
+  historyCache = { raw, data };
+  return data;
 }
 
 function addHistory(type, title, summary) {
@@ -488,7 +559,10 @@ function addHistory(type, title, summary) {
     summary,
     time: new Date().toLocaleString()
   };
-  localStorage.setItem("media-client.history", JSON.stringify([item, ...historyItems()].slice(0, 30)));
+  const items = [item, ...historyItems()].slice(0, 30);
+  const raw = JSON.stringify(items);
+  localStorage.setItem("media-client.history", raw);
+  historyCache = { raw, data: items };
   renderHistory();
 }
 
@@ -509,10 +583,20 @@ function renderHistory() {
   `).join("");
 }
 
+let activeController = null;
+
+function createController() {
+  activeController?.abort();
+  activeController = new AbortController();
+  return activeController;
+}
+
 function bindNavigation() {
   $$("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       const view = button.dataset.view;
+      activeController?.abort();
+      activeController = null;
       state.activeView = view;
       $$("[data-view]").forEach((item) => item.classList.toggle("is-active", item === button));
       $$("[data-panel]").forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === view));
@@ -564,6 +648,7 @@ async function runImage() {
   setResultState(resultBox, "loading", "正在生成图片...");
 
   try {
+    const ctrl = createController();
     const n = Math.max(1, Math.min(limits.imageCount, Number($("#imageCount").value || 1)));
     const response = await fetch("/api/generate", {
       method: "POST",
@@ -577,7 +662,8 @@ async function runImage() {
         quality: $("#imageQuality").value,
         output_format: "png",
         referenceImages: limits.references ? state.imageRefs : []
-      })
+      }),
+      signal: ctrl.signal
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "图片生成失败");
@@ -593,6 +679,7 @@ async function runImage() {
       : "接口没有返回图片";
     addHistory("图片生成", `${PROVIDER_LABELS[provider]} / ${$("#imageModel").value}`, prompt.slice(0, 80));
   } catch (error) {
+    if (error.name === "AbortError") return;
     setResultState(resultBox, "empty", error.message || "图片生成失败");
   } finally {
     setBusy(button, false, "生成图片");
@@ -618,6 +705,7 @@ async function runVideo() {
   setResultState(resultBox, "loading", "正在创建视频任务...");
 
   try {
+    const ctrl = createController();
     const response = await fetch("/api/video", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -627,7 +715,8 @@ async function runVideo() {
         prompt,
         size: $("#videoSize").value,
         seconds: $("#videoSeconds").value
-      })
+      }),
+      signal: ctrl.signal
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "视频任务创建失败");
@@ -639,6 +728,7 @@ async function runVideo() {
     resultBox.textContent = JSON.stringify(data.response, null, 2);
     addHistory("视频生成", $("#videoModel").value, prompt.slice(0, 80));
   } catch (error) {
+    if (error.name === "AbortError") return;
     setResultState(resultBox, "empty", error.message || "视频任务创建失败");
   } finally {
     setBusy(button, false, "创建视频任务");
@@ -647,16 +737,18 @@ async function runVideo() {
 
 async function pollVideo() {
   if (!state.videoId) return;
-  if (!requireKey("openai")) return;
+  if (!requireKey($("#videoProvider").value)) return;
   const resultBox = $("#videoResults");
   setBusy(els.videoPoll, true, "查询任务状态");
   setResultState(resultBox, "loading", "正在查询任务状态...");
 
   try {
+    const ctrl = createController();
     const response = await fetch("/api/video/status", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...connection($("#videoProvider").value), id: state.videoId })
+      body: JSON.stringify({ ...connection($("#videoProvider").value), id: state.videoId }),
+      signal: ctrl.signal
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "任务查询失败");
@@ -665,6 +757,7 @@ async function pollVideo() {
     resultBox.textContent = JSON.stringify(data.response, null, 2);
     els.videoResultStatus.textContent = data.response?.status ? `状态 ${data.response.status}` : `任务 ${state.videoId}`;
   } catch (error) {
+    if (error.name === "AbortError") return;
     setResultState(resultBox, "empty", error.message || "任务查询失败");
   } finally {
     setBusy(els.videoPoll, false, "查询任务状态");
@@ -685,6 +778,7 @@ async function runTranscribe() {
   setResultState(resultBox, "loading", "正在转写...");
 
   try {
+    const ctrl = createController();
     const audio = state.audioFile ? await fileToDataUrl(state.audioFile) : null;
     const response = await fetch("/api/transcribe", {
       method: "POST",
@@ -694,15 +788,17 @@ async function runTranscribe() {
         model: $("#transcribeModel").value,
         file: audio,
         audioUrl: els.audioUrl.value.trim()
-      })
+      }),
+      signal: ctrl.signal
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "转写失败");
     resultBox.classList.remove("is-empty", "is-loading");
     resultBox.classList.add("has-result");
     resultBox.textContent = data.response?.text || JSON.stringify(data.response, null, 2);
-    addHistory("音频转文字", `${PROVIDER_LABELS[provider]} / ${$("#transcribeModel").value}`, state.audioFile.name);
+    addHistory("音频转文字", `${PROVIDER_LABELS[provider]} / ${$("#transcribeModel").value}`, state.audioFile?.name || els.audioUrl.value.trim() || "音频转写");
   } catch (error) {
+    if (error.name === "AbortError") return;
     setResultState(resultBox, "empty", error.message || "转写失败");
   } finally {
     setBusy(button, false, "开始转写");
@@ -724,6 +820,7 @@ async function runSpeech() {
   setResultState(resultBox, "loading", "正在生成语音...");
 
   try {
+    const ctrl = createController();
     const response = await fetch("/api/speech", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -732,7 +829,8 @@ async function runSpeech() {
         model: $("#speechModel").value,
         voice: $("#speechVoice").value,
         input
-      })
+      }),
+      signal: ctrl.signal
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "语音生成失败");
@@ -743,6 +841,7 @@ async function runSpeech() {
     resultBox.innerHTML = `<audio controls src="${audioSrc}"></audio><a class="download-link" href="${audioSrc}" download="speech.${ext}">下载音频</a>`;
     addHistory("文字转语音", `${PROVIDER_LABELS[provider]} / ${$("#speechModel").value}`, input.slice(0, 80));
   } catch (error) {
+    if (error.name === "AbortError") return;
     setResultState(resultBox, "empty", error.message || "语音生成失败");
   } finally {
     setBusy(button, false, "生成语音");
@@ -758,6 +857,7 @@ function bindEvents() {
   updateProviderModels("transcribe");
   updateProviderModels("speech");
   updateProviderStatus();
+  els.providerCount.textContent = `${$$("[data-provider-config]").length} 个厂商`;
 
   els.openSettings.addEventListener("click", () => {
     els.settings.open = true;
@@ -793,7 +893,7 @@ function bindEvents() {
     els.klingBaseUrl.value = "https://api.klingapi.com";
     els.xfyunBaseUrl.value = "wss://iat-api.xfyun.cn/v2/iat";
     els.rememberConnection.checked = false;
-    if (storageAvailable()) localStorage.removeItem("media-client.connection");
+    if (storageAvailable()) { localStorage.removeItem("media-client.connection"); localStorage.removeItem(ENC_STORE_KEY); }
     updateProviderStatus();
   });
   $$("[data-provider-config]").forEach((group) => {
@@ -847,6 +947,7 @@ function bindEvents() {
   $("#clearHistory").addEventListener("click", () => {
     if (!storageAvailable()) return;
     localStorage.removeItem("media-client.history");
+    historyCache = null;
     renderHistory();
   });
 }

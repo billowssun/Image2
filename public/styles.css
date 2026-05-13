@@ -83,10 +83,24 @@ svg {
 }
 
 .brand-mark {
-  width: 18px;
-  height: 18px;
-  transform: rotate(45deg);
-  background: linear-gradient(135deg, var(--green), var(--blue));
+  width: 26px;
+  height: 26px;
+  color: var(--green);
+  stroke-width: 1.7;
+  transition: transform 0.3s ease;
+}
+
+.brand-mark:hover {
+  animation: key-wiggle 0.55s ease;
+}
+
+@keyframes key-wiggle {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-18deg); }
+  40%  { transform: rotate(10deg); }
+  60%  { transform: rotate(-5deg); }
+  80%  { transform: rotate(2deg); }
+  100% { transform: rotate(0deg); }
 }
 
 .nav-tabs {
@@ -856,4 +870,93 @@ audio {
     padding: 16px;
   }
 
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --panel: #1e2128;
+    --panel-soft: #252830;
+    --text: #e1e5ee;
+    --muted: #8b92a2;
+    --line: #343840;
+    --line-soft: #2c3038;
+  }
+
+  .topbar {
+    background: rgba(20, 22, 27, 0.94);
+    border-bottom-color: #2c3038;
+  }
+
+  .nav-tabs button.is-active {
+    background: #1d3040;
+  }
+
+  .provider-config {
+    background: #21242b;
+  }
+
+  .provider-config[open] {
+    background: #1a2833;
+    border-color: #1e4568;
+  }
+
+  .provider-config-body {
+    background: #1e2128;
+    border-top-color: #2c3038;
+  }
+
+  .form-section {
+    border-bottom-color: #2c3038;
+  }
+
+  .key-card {
+    background: linear-gradient(90deg, rgba(34, 167, 255, 0.08), rgba(125, 124, 244, 0.05));
+    border-color: #1e4568;
+  }
+
+  .settings-panel {
+    background: #1e2128;
+    border-color: #343840;
+  }
+
+  .settings-count {
+    background: #1c2e40;
+    border-color: #254868;
+  }
+
+  .ghost-button {
+    background: #252830;
+    border-color: #343840;
+    color: #e1e5ee;
+  }
+
+  .provider-catalog span {
+    background: #1e2128;
+    color: #8b92a2;
+  }
+
+  .provider-catalog span.is-ready {
+    background: #1d3040;
+    border-color: #1e4568;
+  }
+
+  .result-box,
+  .upload-button,
+  .upload-drop {
+    background: #21242b;
+    border-color: #2c3038;
+  }
+
+  .history-item,
+  .refresh-models {
+    background: #252830;
+    border-color: #2c3038;
+  }
+
+  input, select, textarea {
+    background: #1c1f25;
+    border-color: #343840;
+    color: #e1e5ee;
+  }
 }
